@@ -42,6 +42,10 @@ void radixsort(int array[], int size, int digit) {
 		return;
 	}
 
+	/*if (size < cut_off) {
+		return cutoffradixsort(array, size, digit);
+	}*/
+
 	if (digit < cut_off) {
 		return cutoffradixsort(array, size, digit);
 	}
@@ -77,11 +81,11 @@ void firstradixsort(int array[], int size, int digit) {
 	if(size <= 1 || digit < 0){
 		return;
 	}
-
+	/*
 	if (digit < cut_off) {
 		return cutoffradixsort(array, size, digit);
 	}
-
+	*/
 	int count[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, size};
 	int *aux = malloc(sizeof(int) * size);
 
@@ -147,7 +151,7 @@ int sorted(int array[], int size){
 void parse_args(int argc, const char *argv[], int *digit, int *size) {
 	*digit = 8;
 	*size = pow(10, 8);
-	cut_off = 8;
+	cut_off = pow(2, 16); // cache L2
 	if (argc > 2) {
 		if (strcmp(argv[1], "-d") == 0) {
 			*digit = atoi(argv[2]);
@@ -195,17 +199,30 @@ int main(int argc, char const *argv[])
 		array[i] = rand()%q;
 	}
 
+	int num_threads;
+
 	#pragma omp parallel
 	#pragma omp single
-	printf("Sorting with %d thread(s)\n", omp_get_num_threads());
-	printf("Cut-off: %d\n", cut_off);
+	num_threads = omp_get_num_threads();
+	//printf("Sorting with %d thread(s)\n", num_threads);
+	//printf("Cut-off: %d\n", cut_off);
 
-	double it = omp_get_wtime();
-	firstradixsort(array, size, digit);
-	double ft = omp_get_wtime();
+	double it, ft;
+
+	if (num_threads == 1) {
+		it = omp_get_wtime();
+		cutoffradixsort(array, size, digit);
+		ft = omp_get_wtime();
+	}
+	else {
+		it = omp_get_wtime();
+		firstradixsort(array, size, digit);
+		ft = omp_get_wtime();
+	}
 
 	if (sorted(array, size)){
-		printf("Sorted in %f seconds\n", ft - it);
+		//printf("Sorted in %f seconds\n", ft - it);
+		printf("%f", ft-it);
 	}
 	else {
 		printf("Not Sorted\n");
