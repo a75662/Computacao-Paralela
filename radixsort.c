@@ -42,11 +42,7 @@ void radixsort(int array[], int size, int digit) {
 		return;
 	}
 
-	/*if (size < cut_off) {
-		return cutoffradixsort(array, size, digit);
-	}*/
-
-	if (digit < cut_off) {
+	if (size < cut_off) {
 		return cutoffradixsort(array, size, digit);
 	}
 
