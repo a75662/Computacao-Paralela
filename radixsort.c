@@ -225,7 +225,7 @@ int main(int argc, char const *argv[])
 
 	double it, ft;
 
-	if (num_threads == 0) {
+	if (num_threads == 1) {
 		int *aux = malloc(sizeof(int) * size);
 
 		it = omp_get_wtime();
