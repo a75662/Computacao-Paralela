@@ -5,20 +5,23 @@
 #include <string.h>
 
 int cut_off;
+double seq_time;
 
-void cutoffradixsort(int array[], int size, int digit) {
+void cutoffradixsort(int array[], int size, int digit, int *aux) {
 
 	if(size <= 1 || digit < 0){
 		return;
 	}
 
 	int count[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, size};
-	int *aux = malloc(sizeof(int) * size);
+	//int *aux = malloc(sizeof(int) * size);
 
 	int i, num = pow(10, digit);
 
 	for(i = 0; i < size; i++)
 		count[(array[i]/num) % 10]++;
+
+	//double it = omp_get_wtime();
 
 	for(i = 1; i < 10; i++)
 		count[i] += count[i-1];
@@ -26,28 +29,33 @@ void cutoffradixsort(int array[], int size, int digit) {
 	for(i = 0; i < size; i++)
 		aux[--count[(array[i]/num) % 10]] = array[i];
 
+	/*double ft = omp_get_wtime();
+	if (seq_time == 0) {
+		seq_time = ft - it;
+	}*/
+
 	for(i = 0; i < size; i++)
 		array[i] = aux[i];
 
-	free(aux);
+	//free(aux);
 
 	for(int i = 0; i < 10; i++){
-		cutoffradixsort(array + count[i], count[i+1]-count[i], digit-1);
+		cutoffradixsort(array + count[i], count[i+1]-count[i], digit-1, aux + count[i]);
 	}
 }
 
-void radixsort(int array[], int size, int digit) {
+void radixsort(int array[], int size, int digit, int *aux) {
 
 	if(size <= 1 || digit < 0){
 		return;
 	}
 
 	if (size < cut_off) {
-		return cutoffradixsort(array, size, digit);
+		return cutoffradixsort(array, size, digit, aux);
 	}
 
 	int count[11] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, size};
-	int *aux = malloc(sizeof(int) * size);
+	//int *aux = malloc(sizeof(int) * size);
 
 	int i, num = pow(10, digit);
 
@@ -63,11 +71,11 @@ void radixsort(int array[], int size, int digit) {
 	for(i = 0; i < size; i++)
 		array[i] = aux[i];
 
-	free(aux);
+	//free(aux);
 
 	for(int i = 0; i < 10; i++){
 		#pragma omp task
-		radixsort(array + count[i], count[i+1]-count[i], digit-1);
+		radixsort(array + count[i], count[i+1]-count[i], digit-1, aux + count[i]);
 	}
 	#pragma omp taskwait
 }
@@ -78,7 +86,7 @@ void firstradixsort(int array[], int size, int digit) {
 		return;
 	}
 	/*
-	if (digit < cut_off) {
+	if (size < cut_off) {
 		return cutoffradixsort(array, size, digit);
 	}
 	*/
@@ -98,19 +106,27 @@ void firstradixsort(int array[], int size, int digit) {
 		}
 
 		#pragma omp single
-		for(i = 1; i < 10; i++)
-			count[i] += count[i-1];
+		{
+			double it = omp_get_wtime();
 
-		//#pragma omp for
-		#pragma omp single
-		for(i = 0; i < size; i++){
-			int c = (array[i]/num) % 10;
+			for(i = 1; i < 10; i++)
+				count[i] += count[i-1];
 
-			int ind;
-			//#pragma omp atomic capture
-			ind = --count[c];
+			//#pragma omp for
+			//#pragma omp single
+			for(i = 0; i < size; i++){
+				int c = (array[i]/num) % 10;
 
-			aux[ind] = array[i];
+				int ind;
+				//#pragma omp atomic capture
+				ind = --count[c];
+
+				aux[ind] = array[i];
+			}
+
+			double ft = omp_get_wtime();
+
+			seq_time = ft-it;
 		}
 
 		#pragma omp for
@@ -118,15 +134,19 @@ void firstradixsort(int array[], int size, int digit) {
 			array[i] = aux[i];
 
 		#pragma omp single
-		free(aux);
+		{
+			//free(aux);
 
-		#pragma omp single
-		for(int i = 0; i < 10; i++){
-			#pragma omp task
-			radixsort(array + count[i], count[i+1]-count[i], digit-1);
+			//#pragma omp single
+			for(int i = 0; i < 10; i++){
+				#pragma omp task
+				radixsort(array + count[i], count[i+1]-count[i], digit-1, aux + count[i]);
+			}
+			#pragma omp taskwait
 		}
-		#pragma omp taskwait
 	}
+
+	free(aux);
 }
 
 void print(int array[], int size){
@@ -205,10 +225,14 @@ int main(int argc, char const *argv[])
 
 	double it, ft;
 
-	if (num_threads == 1) {
+	if (num_threads == 0) {
+		int *aux = malloc(sizeof(int) * size);
+
 		it = omp_get_wtime();
-		cutoffradixsort(array, size, digit);
+		cutoffradixsort(array, size, digit, aux);
 		ft = omp_get_wtime();
+
+		free(aux);
 	}
 	else {
 		it = omp_get_wtime();
@@ -218,7 +242,9 @@ int main(int argc, char const *argv[])
 
 	if (sorted(array, size)){
 		//printf("Sorted in %f seconds\n", ft - it);
-		printf("%f", ft-it);
+		printf("%f,", ft-it);
+		//printf("Sequential time: %f seconds\n", seq_time);
+		printf("%f", seq_time);
 	}
 	else {
 		printf("Not Sorted\n");
