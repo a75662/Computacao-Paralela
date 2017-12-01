@@ -21,7 +21,7 @@ void cutoffradixsort(int array[], int size, int digit, int *aux) {
 	for(i = 0; i < size; i++)
 		count[(array[i]/num) % 10]++;
 
-	//double it = omp_get_wtime();
+	double it = omp_get_wtime();
 
 	for(i = 1; i < 10; i++)
 		count[i] += count[i-1];
@@ -29,10 +29,10 @@ void cutoffradixsort(int array[], int size, int digit, int *aux) {
 	for(i = 0; i < size; i++)
 		aux[--count[(array[i]/num) % 10]] = array[i];
 
-	/*double ft = omp_get_wtime();
+	double ft = omp_get_wtime();
 	if (seq_time == 0) {
 		seq_time = ft - it;
-	}*/
+	}
 
 	for(i = 0; i < size; i++)
 		array[i] = aux[i];
